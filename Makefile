@@ -7,9 +7,9 @@ CFLAGS	:=	-g -O3 -std=c99 -Wno-deprecated-declarations
 ifeq ($(ARCH),DARWIN)
 CFLAGS	+=	-I /opt/local/include
 LDFLAGS	+=	-L /opt/local/include
-LDLIBS	+=	-framework GLUT -framework OpenGL -framework OpenCL
+LDLIBS	+=	-framework GLUT -framework OpenGL -framework OpenCL 
 else
-LDLIBS		:= -lOpenCL -lGL -lGLU -lglut -lm
+LDLIBS		:= -lOpenCL -lGL -lGLU -lglut -lm -fopenmp
 endif
 
 .phony: default clean

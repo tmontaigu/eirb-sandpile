@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <omp.h>
 //////////////////////////////////////////////////////////////////////////
 // Tas de sable "fake" (juste pour tester)
 
@@ -170,15 +171,74 @@ float *compute2(unsigned iterations) {
     return couleurs;
 }
 
+float *naive_parra(unsigned iterations) {
+    reset_change();
+    #pragma omp parallel
+    {
+        #pragma omp for
+        for (int i = 0; i < DIM; i++) {
+           for (int j = 0; j < DIM; j++) {
+             old[i][j] = ocean[i][j];
+            }
+        }
+    }
 
+    for (int ite = 0; ite < iterations; ite++) {
+        #pragma omp parallel
+        #pragma omp for 
+       for (int x = 0; x < DIM; x++) {
+           for (int y = 0; y < DIM; y++) {
+
+               if ( ocean[x+1][y] >= 4) {
+                   old[x][y] += 1;
+                   old[x+1][y] -= 1;
+                   changed[x+1][y] = 1;
+               } 
+               if ( ocean[x-1][y] >= 4) {
+                   old[x][y] += 1;
+                   old[x-1][y] -= 1;
+                   changed[x-1][y] = 1;
+               }
+                if ( ocean[x][y+1] >= 4) {
+                   old[x][y] += 1;
+                   old[x][y+1] -= 1;
+                   changed[x][y+1] = 1;
+               }
+               if ( ocean[x][y-1] >= 4) {
+                   old[x][y] += 1;
+                   old[x][y-1] -= 1;
+                   changed[x][y-1] = 1;
+               }
+            printf("x: %d , y: %d\n", x, y);
+           }
+           
+    printf("thread %d approche de taskwait \n", omp_get_thread_num());
+    #pragma omp barrier
+    printf("thread %d a passe taskwait \n", omp_get_thread_num());
+       }
+    #pragma omp barrier
+    }
+
+   for (int i = 0; i < DIM; i++) {
+        for (int j = 0; j < DIM; j++) {
+            ocean[i][j] = old[i][j];
+        }
+    }
+    
+    colorize();
+    return couleurs;
+ 
+}
+        
 int main (int argc, char **argv)
 {
-  sable_init ();
-  display_init (argc, argv,
-		DIM,              // dimension ( = x = y) du tas
-		MAX_HEIGHT,       // hauteur maximale du tas
-		get,              // callback func
-        compute);         // callback func
+    float *computesFunctions[4];
+    sable_init ();
+    display_init (argc, argv,
+          DIM,              // dimension ( = x = y) du tas
+          MAX_HEIGHT,       // hauteur maximale du tas
+          get,              // callback func
+          naive_parra);         // callback func
 
-  return 0;
+    return 0;
 }
