@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <unistd.h>
 #include <omp.h>
 //////////////////////////////////////////////////////////////////////////
 // Tas de sable "fake" (juste pour tester)
@@ -59,7 +61,7 @@ void colorize(){
              }
             
         }
-    }
+    }    
 }
 
 void reset_change() {
@@ -76,20 +78,24 @@ unsigned get (unsigned x, unsigned y)
 }
 
 // Tas de sable initial
-static void sable_init ()
+static void sable_init (int config)
 {
-  unsigned dmax2 = MAX_HEIGHT; 
   
-/* 
-  for (int y = 0; y < DIM; y++)
-    for (int x = 0; x < DIM; x++) {
-      ocean[y][x] = 5;
+    if (config == 1) { 
+        for (int y = 0; y < DIM; y++) {
+            for (int x = 0; x < DIM; x++) {
+                ocean[y][x] = 5;
+            }
+        }
     }
-*/ 
-//   ocean[0][1] = 4;
- ocean[DIM/2][DIM/2] = dmax2;
- //ocean[DIM/4][(DIM/4)*3] = dmax2;
- //ocean[DIM/4][DIM/4] = dmax2;
+    else if (config == 0) {
+        ocean[DIM/2][DIM/2] = MAX_HEIGHT;
+    }
+    else {
+        ocean[DIM/2][DIM/2] = MAX_HEIGHT;
+        ocean[DIM/4][(DIM/4)*3] = MAX_HEIGHT;
+        ocean[DIM/4][DIM/4] = MAX_HEIGHT;
+    }
 }
 
 // callback
@@ -100,21 +106,21 @@ float *compute (unsigned iterations)
   for (unsigned i = 0; i < iterations; i++)
     {
         step++;
-        for (int y = 0; y < DIM; y++)
+        for (int x = 1; x < DIM; x++)
 	    {
-	        for (int x = 0; x < DIM; x++)
+	        for (int y = 1; y < DIM; y++)
 	        {
 	            if (ocean[x][y] >= 4)
-		        {
-		  
-		            ocean[x+1][y] += 1;		  
-		            ocean[x-1][y] += 1;
-		            ocean[x][y+1] += 1;
-		            ocean[x][y-1] += 1;
+                    {
+                        
+                        ocean[x+1][y] += 1;		  
+		        ocean[x-1][y] += 1;
+		        ocean[x][y+1] += 1;
+		        ocean[x][y-1] += 1;
 
-                    ocean[x][y] -= 4;
-                    changed[x][y] = 1;
-		        }
+                        ocean[x][y] -= 4;
+                        changed[x][y] = 1;
+                    }
 	        }
 	    }
     }
@@ -126,44 +132,46 @@ float *compute (unsigned iterations)
 float *compute2(unsigned iterations) {
     reset_change();
 
-   for (int i = 0; i < DIM; i++) {
-        for (int j = 0; j < DIM; j++) {
+   for (int i = 1; i < DIM; i++) {
+        for (int j = 1; j < DIM; j++) {
             old[i][j] = ocean[i][j];
         }
     }
   
     for (int ite = 0; ite < iterations; ite++) {
-        for (int x = 0; x < DIM; x++) {
-            for (int y = 0; y < DIM; y++) {
 
-                if ( ocean[x+1][y] >= 4) {
+        for (int x = 1; x < DIM; x++) {
+            for (int y = 1; y < DIM; y++) {
+
+                if (ocean[x+1][y] >= 4) {
                     old[x][y] += 1;
-                    old[x+1][y] -= 1;
+                  //  old[x+1][y] -= 1;
                     changed[x+1][y] = 1;
                 } 
-                if ( ocean[x-1][y] >= 4) {
+                if (ocean[x-1][y] >= 4) {
                     old[x][y] += 1;
-                    old[x-1][y] -= 1;
+                  //  old[x-1][y] -= 1;
                     changed[x-1][y] = 1;
                 }
-                 if ( ocean[x][y+1] >= 4) {
+                 if (ocean[x][y+1] >= 4) {
                     old[x][y] += 1;
-                    old[x][y+1] -= 1;
+                //    old[x][y+1] -= 1;
                     changed[x][y+1] = 1;
                 }
 
-               if ( ocean[x][y-1] >= 4) {
+               if (ocean[x][y-1] >= 4) {
                     old[x][y] += 1;
-                    old[x][y-1] -= 1;
+                  //  old[x][y-1] -= 1;
                     changed[x][y-1] = 1;
                 }
-
+                if (ocean[x][y] >= 4)
+                    old[x][y] -= 4;
             }
         }
     }
     
-   for (int i = 0; i < DIM; i++) {
-        for (int j = 0; j < DIM; j++) {
+   for (int i = 1; i < DIM; i++) {
+        for (int j = 1; j < DIM; j++) {
             ocean[i][j] = old[i][j];
         }
     }
@@ -171,74 +179,73 @@ float *compute2(unsigned iterations) {
     return couleurs;
 }
 
-float *naive_parra(unsigned iterations) {
+float *naive_para(unsigned iterations) {
+   
+    static int step = 0;
     reset_change();
-    #pragma omp parallel
-    {
-        #pragma omp for
-        for (int i = 0; i < DIM; i++) {
-           for (int j = 0; j < DIM; j++) {
-             old[i][j] = ocean[i][j];
-            }
+    for (unsigned i = 0; i < iterations; i++)
+        {
+            step++;
+            #pragma omp parallel
+            #pragma omp for
+            for (int x = 1; x < DIM; x++)
+                {
+                    for (int y = 1; y < DIM; y++)
+                    {
+                        if (ocean[x][y] >= 4)
+                        {
+                            
+                            ocean[x+1][y] += 1;		  
+                            ocean[x-1][y] += 1;
+                            ocean[x][y+1] += 1;
+                            ocean[x][y-1] += 1;
+
+                            ocean[x][y] -= 4;
+                            changed[x][y] = 1;
+                        }
+                    }
+                }
+            #pragma omp barrier
         }
-    }
 
-    for (int ite = 0; ite < iterations; ite++) {
-        #pragma omp parallel
-        #pragma omp for 
-       for (int x = 0; x < DIM; x++) {
-           for (int y = 0; y < DIM; y++) {
-
-               if ( ocean[x+1][y] >= 4) {
-                   old[x][y] += 1;
-                   old[x+1][y] -= 1;
-                   changed[x+1][y] = 1;
-               } 
-               if ( ocean[x-1][y] >= 4) {
-                   old[x][y] += 1;
-                   old[x-1][y] -= 1;
-                   changed[x-1][y] = 1;
-               }
-                if ( ocean[x][y+1] >= 4) {
-                   old[x][y] += 1;
-                   old[x][y+1] -= 1;
-                   changed[x][y+1] = 1;
-               }
-               if ( ocean[x][y-1] >= 4) {
-                   old[x][y] += 1;
-                   old[x][y-1] -= 1;
-                   changed[x][y-1] = 1;
-               }
-            printf("x: %d , y: %d\n", x, y);
-           }
-           
-    printf("thread %d approche de taskwait \n", omp_get_thread_num());
-    #pragma omp barrier
-    printf("thread %d a passe taskwait \n", omp_get_thread_num());
-       }
-    #pragma omp barrier
-    }
-
-   for (int i = 0; i < DIM; i++) {
-        for (int j = 0; j < DIM; j++) {
-            ocean[i][j] = old[i][j];
-        }
-    }
-    
-    colorize();
-    return couleurs;
+   colorize();
+   return couleurs;
  
 }
         
 int main (int argc, char **argv)
 {
     float *computesFunctions[4];
-    sable_init ();
+    computesFunctions[0] = compute;
+    computesFunctions[1] = compute2;
+    computesFunctions[2] = naive_para;
+    
+    char* value = NULL;
+    int config = 0;
+    int c;
+    
+    while ((c = getopt(argc, argv, "hs")) != -1) {
+        switch (c) {
+        case 's':
+            config = 0;
+            break;
+        case 'h':
+            config = 1;
+            break;
+        default:
+            return 0;
+            
+        }
+
+    }
+    
+    
+    sable_init(config);
     display_init (argc, argv,
           DIM,              // dimension ( = x = y) du tas
           MAX_HEIGHT,       // hauteur maximale du tas
           get,              // callback func
-          naive_parra);         // callback func
+          computesFunctions[0]);         // callback func
 
     return 0;
 }
