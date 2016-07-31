@@ -17,11 +17,14 @@ endif
 default: $(PROG)
 
 $(PROG): main.o display.o
-	$(CC) -o $@ $(LDFLAGS) $^ $(LDLIBS)
+	gcc -o $@ $(LDFLAGS) $^ $(LDLIBS)
+
+	
+	
 
 main.o: display.h
 
 display.o: display.h
 
 clean:
-	rm -rf *.o $(PROG)
+	rm -rf *.o $(PROG) 
